@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-kart Premium | Secured Enterprise</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0f172a; --surface: rgba(255, 255, 255, 0.03); --border: rgba(255, 255, 255, 0.1);
+            --text: #f8fafc; --text-muted: #94a3b8; --primary: #6366f1; --secondary: #f43f5e;
+        }
+        [data-theme="light"] {
+            --bg: #f8fafc; --surface: #ffffff; --border: #e2e8f0; --text: #1e293b; --text-muted: #64748b;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; transition: 0.3s; }
+        body { background: var(--bg); color: var(--text); overflow-x: hidden; min-height: 100vh; }
+
+        /* Auth Screen */
+        #authOverlay { position: fixed; inset: 0; background: var(--bg); z-index: 5000; display: flex; align-items: center; justify-content: center; }
+        .auth-card { background: var(--surface); padding: 3rem; border-radius: 24px; border: 1px solid var(--border); width: 90%; max-width: 400px; text-align: center; backdrop-filter: blur(10px); }
+
+        /* Navigation */
+        nav { background: var(--bg); border-bottom: 1px solid var(--border); padding: 1rem 8%; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; }
+        .logo { font-weight: 800; font-size: 1.8rem; background: linear-gradient(to right, #6366f1, #f43f5e); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-decoration: none; }
+        .search-bar { width: 100%; padding: 0.8rem; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; color: var(--text); outline: none; }
+        .logout-link { color: var(--secondary); cursor: pointer; font-size: 0.9rem; font-weight: 600; text-decoration: underline; margin-left: 15px; }
+
+        /* Categories */
+        .categories { padding: 1.5rem 8% 0; display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; }
+        .cat-btn { padding: 8px 20px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; white-space: nowrap; }
+        .cat-btn.active { background: var(--primary); color: white; }
+
+        /* Main Grid */
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 2rem; padding: 2rem 8%; }
+        .product-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 1rem; cursor: pointer; position: relative; }
+        .img-container { width: 100%; height: 180px; border-radius: 12px; overflow: hidden; margin-bottom: 10px; background: #1e293b; }
+        .img-container img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .add-main-btn { width: 100%; height: 40px; border: none; border-radius: 10px; background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; font-weight: 700; cursor: pointer; margin-top: 10px; }
+        
+        /* Panels & Modals */
+        .panel { position: fixed; right: -100%; top: 0; width: 400px; height: 100vh; background: var(--bg); border-left: 1px solid var(--border); z-index: 2000; padding: 2rem; }
+        .panel.open { right: 0; }
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 4000; display: none; align-items: center; justify-content: center; }
+        .modal-content { background: var(--bg); padding: 2rem; border-radius: 24px; border: 1px solid var(--border); width: 90%; max-width: 500px; max-height: 85vh; overflow-y: auto; position: relative;}
+
+        /* Floating UI */
+        .floating-btns { position: fixed; bottom: 2rem; right: 2rem; display: flex; flex-direction: column; gap: 10px; z-index: 1500; }
+        .f-btn { width: 60px; height: 60px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.5rem; color: white; border: none; box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
+        
+        .star-rating { color: #fbbf24; cursor: pointer; font-size: 1.2rem; }
+        .status-badge { padding: 4px 10px; border-radius: 6px; font-size: 0.7rem; font-weight: bold; text-transform: uppercase; }
+    </style>
+</head>
+<body data-theme="dark">
+
+<div id="authOverlay">
+    <div class="auth-card">
+        <h1 class="logo" style="margin-bottom: 1rem;">E-kart</h1>
+        <p id="authMsg" style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1.5rem;">Welcome back! Please login.</p>
+        <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; background: rgba(128,128,128,0.1); padding: 5px; border-radius: 12px;">
+            <button id="tabCust" style="flex:1; padding: 10px; border-radius: 8px; border:none; background:var(--primary); color:white; cursor:pointer" onclick="app.setRole('customer')">Customer</button>
+            <button id="tabVend" style="flex:1; padding: 10px; border-radius: 8px; border:none; background:transparent; color:var(--text); cursor:pointer" onclick="app.setRole('vendor')">Vendor</button>
+        </div>
+        <input type="email" id="userEmail" placeholder="Email Address" class="search-bar" style="margin-bottom:10px">
+        <input type="password" id="userPass" placeholder="Password" class="search-bar" style="margin-bottom:20px">
+        <button class="add-main-btn" onclick="app.login()">SIGN IN</button>
+        <p style="margin-top: 15px; font-size: 0.7rem; color: var(--text-muted)">Vendor? Use admin@ekart.com / vendor789</p>
+    </div>
+</div>
+
+<nav>
+    <a href="#" class="logo">E-kart</a>
+    <div style="width: 40%; display: flex; align-items: center;">
+        <input type="text" class="search-bar" id="search" placeholder="Search products..." onkeyup="app.render()">
+    </div>
+    <div style="display: flex; align-items: center; gap: 15px;">
+        <button class="cat-btn" onclick="app.toggleTheme()" style="padding: 10px;">🌓</button>
+        <span class="logout-link" id="logoutBtn" style="display:none" onclick="app.logout()">Logout</span>
+    </div>
+</nav>
+
+<div id="vendorDashboard" style="display:none; padding: 2rem 8%;">
+    <h2 style="margin-bottom: 20px;">Vendor Panel</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 40px; background: var(--surface); padding: 20px; border-radius: 20px;">
+        <input type="text" id="vName" placeholder="Product Name" class="search-bar">
+        <input type="number" id="vPrice" placeholder="Price (₹)" class="search-bar">
+        <select id="vCat" class="search-bar">
+            <option>Electronics</option><option>Apparel</option><option>Clothes</option><option>Footwear</option><option>Accessories</option>
+        </select>
+        <input type="file" id="vFile" class="search-bar">
+        <button class="add-main-btn" onclick="app.vendorAdd()">ADD PRODUCT</button>
+    </div>
+    <h3>Manage Orders</h3>
+    <div id="vendorOrders" style="margin-top: 20px;"></div>
+</div>
+
+<div class="categories" id="catBar">
+    <button class="cat-btn active" onclick="app.setCat('All', this)">All</button>
+    <button class="cat-btn" onclick="app.setCat('Electronics', this)">Electronics</button>
+    <button class="cat-btn" onclick="app.setCat('Apparel', this)">Apparel</button>
+    <button class="cat-btn" onclick="app.setCat('Clothes', this)">Clothes</button>
+    <button class="cat-btn" onclick="app.setCat('Footwear', this)">Footwear</button>
+    <button class="cat-btn" onclick="app.setCat('Accessories', this)">Accessories</button>
+</div>
+
+<div class="grid" id="productGrid"></div>
+
+<div class="modal" id="detailsModal">
+    <div class="modal-content">
+        <div id="detailsBody"></div>
+        <button class="add-main-btn" style="background:#475569" onclick="app.closeModal('detailsModal')">Close</button>
+    </div>
+</div>
+
+<div class="panel" id="trackPanel">
+    <h2>Track Orders</h2>
+    <div id="trackList" style="margin-top:20px; overflow-y:auto"></div>
+</div>
+
+<div class="panel" id="cartPanel">
+    <h2>My Bag</h2>
+    <div id="cartItems" style="margin:20px 0; max-height:65vh; overflow-y:auto"></div>
+    <div style="border-top:1px solid var(--border); padding-top:15px">
+        <p style="font-size:1.2rem; display:flex; justify-content:space-between">Total: <b id="cartTotal">₹0</b></p>
+        <button class="add-main-btn" onclick="app.openCheckout()">CHECKOUT</button>
+    </div>
+</div>
+
+<div class="modal" id="checkoutModal">
+    <div class="modal-content">
+        <h3>Final Details</h3>
+        <input type="text" id="custName" placeholder="Full Name" class="search-bar" style="margin-top:15px">
+        <textarea id="custAddr" placeholder="Full Shipping Address" class="search-bar" style="margin-top:10px; height:80px"></textarea>
+        <div style="margin:20px 0; text-align:left; background: var(--surface); padding:15px; border-radius:12px;">
+            <p style="margin-bottom:10px; font-weight:bold;">Payment Method:</p>
+            <label style="display:block; margin-bottom:8px;"><input type="radio" name="pay" value="Online" checked> Online Payment</label>
+            <label style="display:block;"><input type="radio" name="pay" value="COD"> Cash on Delivery</label>
+        </div>
+        <button class="add-main-btn" onclick="app.placeOrder()">CONFIRM ORDER</button>
+    </div>
+</div>
+
+<div class="floating-btns" id="floatBtns">
+    <button class="f-btn" onclick="app.togglePanel('trackPanel')">🚚</button>
+    <button class="f-btn" onclick="app.togglePanel('cartPanel')">🛒<span id="cCount" style="font-size:10px; background:var(--secondary); padding:2px 6px; border-radius:50%; position:absolute; top:0; right:0">0</span></button>
+</div>
+
+<script>
+    const app = {
+        // Unique Vendor Credentials
+        vendorCreds: { email: 'admin@ekart.com', pass: 'vendor789' },
+        
+        data: [], cart: [], orders: [], role: 'customer', cat: 'All',
+        
+        // Sanitized Product Catalog (Only items with valid images)
+        initData: [
+            // Electronics
+            { id: 1, name: "IPhone 15 Pro", price: 124000, cat: "Electronics", img: "https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=400", desc: "Titanium build.", rating: 5 },
+            { id: 2, name: "Sony WH-1000XM5", price: 29999, cat: "Electronics", img: "https://images.unsplash.com/photo-1546435770-a3e426da471b?w=400", desc: "Noise cancelling.", rating: 4 },
+            { id: 3, name: "MacBook Air M2", price: 95000, cat: "Electronics", img: "https://images.unsplash.com/photo-1517336714460-45732a2d7f8c?w=400", desc: "Apple Silicon.", rating: 5 },
+            { id: 4, name: "Galaxy S24 Ultra", price: 129000, cat: "Electronics", img: "https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=400", desc: "AI Powered.", rating: 5 },
+            { id: 5, name: "Apple Watch Ultra", price: 82000, cat: "Electronics", img: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400", desc: "For athletes.", rating: 4 },
+            { id: 6, name: "DJI Drone Mini", price: 75000, cat: "Electronics", img: "https://images.unsplash.com/photo-1507582020474-9a35b7d455d9?w=400", desc: "4K Aerial shots.", rating: 5 },
+            { id: 7, name: "Sony Camera Alpha", price: 185000, cat: "Electronics", img: "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=400", desc: "Mirrorless.", rating: 4 },
+            { id: 8, name: "Nintendo Switch", price: 28000, cat: "Electronics", img: "https://images.unsplash.com/photo-1507457379470-08b8006ad91e?w=400", desc: "OLED Screen.", rating: 4 },
+            { id: 9, name: "Gaming Keyboard", price: 4500, cat: "Electronics", img: "https://images.unsplash.com/photo-1511467687858-23d96c32e4ae?w=400", desc: "RGB Mechanical.", rating: 4 },
+            { id: 10, name: "Curved Monitor", price: 35000, cat: "Electronics", img: "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=400", desc: "144Hz 4K.", rating: 5 },
+            // Apparel
+            { id: 21, name: "Premium Watch", price: 15000, cat: "Apparel", img: "https://images.unsplash.com/photo-1524592094714-0f0654e20314?w=400", desc: "Automatic.", rating: 5 },
+            { id: 22, name: "Aviator Shades", price: 3200, cat: "Apparel", img: "https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=400", desc: "UV400.", rating: 4 },
+            { id: 23, name: "Handbag Leather", price: 5400, cat: "Apparel", img: "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=400", desc: "Genuine skin.", rating: 5 },
+            { id: 24, name: "Woolen Hat", price: 2200, cat: "Apparel", img: "https://images.unsplash.com/photo-1514327605112-b887c0e61c0a?w=400", desc: "Winter wear.", rating: 4 },
+            { id: 25, name: "Plated Chain", price: 4200, cat: "Apparel", img: "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=400", desc: "18k Gold.", rating: 4 },
+            { id: 26, name: "Silk Tie", price: 1500, cat: "Apparel", img: "https://images.unsplash.com/photo-1589756823851-41ae57ad3350?w=400", desc: "Formal.", rating: 4 },
+            { id: 27, name: "Brown Belt", price: 1900, cat: "Apparel", img: "https://images.unsplash.com/photo-1624222247344-550fb8ec5519?w=400", desc: "Tough leather.", rating: 4 },
+            { id: 28, name: "Soft Scarf", price: 3500, cat: "Apparel", img: "https://images.unsplash.com/photo-1520903920243-00d872a2d1c9?w=400", desc: "Cashmere.", rating: 5 },
+            { id: 29, name: "Silver Cufflinks", price: 1200, cat: "Apparel", img: "https://images.unsplash.com/photo-1610492415170-dfba310b809d?w=400", desc: "Polished.", rating: 4 },
+            { id: 30, name: "Urban Backpack", price: 4800, cat: "Apparel", img: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400", desc: "Laptop sleeve.", rating: 4 },
+            // Clothes
+            { id: 11, name: "Basic Tee", price: 1200, cat: "Clothes", img: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400", desc: "100% Cotton.", rating: 4 },
+            { id: 12, name: "Denim Jacket", price: 3500, cat: "Clothes", img: "https://images.unsplash.com/photo-1576995853123-5a10305d93c0?w=400", desc: "Sturdy denim.", rating: 5 },
+            { id: 13, name: "Office Chinos", price: 1800, cat: "Clothes", img: "https://images.unsplash.com/photo-1473966968600-fa801b869a1a?w=400", desc: "Khaki.", rating: 4 },
+            { id: 14, name: "Floral Dress", price: 2200, cat: "Clothes", img: "https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=400", desc: "Summer.", rating: 4 },
+            { id: 15, name: "Black Hoodie", price: 1999, cat: "Clothes", img: "https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=400", desc: "Oversized.", rating: 5 },
+            { id: 16, name: "Cargo Shorts", price: 1400, cat: "Clothes", img: "https://images.unsplash.com/photo-1591195853828-11db59a44f6b?w=400", desc: "Outdoor.", rating: 4 },
+            { id: 17, name: "Dress Shirt", price: 2500, cat: "Clothes", img: "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=400", desc: "Crisp white.", rating: 5 },
+            { id: 18, name: "Knit Sweater", price: 2800, cat: "Clothes", img: "https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=400", desc: "Woolen.", rating: 4 },
+            { id: 19, name: "Yoga Pants", price: 1500, cat: "Clothes", img: "https://images.unsplash.com/photo-1506629082923-f9ad61150c70?w=400", desc: "Elastic.", rating: 4 },
+            { id: 20, name: "Puffer Coat", price: 6500, cat: "Clothes", img: "https://images.unsplash.com/photo-1539533377285-a41cc5e942d4?w=400", desc: "Extreme warm.", rating: 5 },
+            // Footwear
+            { id: 31, name: "Jordan Retro", price: 15500, cat: "Footwear", img: "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=400", desc: "High top.", rating: 5 },
+            { id: 32, name: "Black Chelsea", price: 6500, cat: "Footwear", img: "https://images.unsplash.com/photo-1638247025967-b4e38f787b76?w=400", desc: "Leather.", rating: 4 },
+            { id: 33, name: "White Trainers", price: 3200, cat: "Footwear", img: "https://images.unsplash.com/photo-1560769629-975ec94e6a86?w=400", desc: "Comfy.", rating: 4 },
+            { id: 34, name: "Suede Oxfords", price: 4800, cat: "Footwear", img: "https://images.unsplash.com/photo-1533867617858-e7b97e060509?w=400", desc: "Office.", rating: 5 },
+            { id: 35, name: "Trail Runners", price: 5200, cat: "Footwear", img: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400", desc: "Grippy.", rating: 4 },
+            { id: 36, name: "Beach Sliders", price: 900, cat: "Footwear", img: "https://images.unsplash.com/photo-1520639889313-7272a74b1c73?w=400", desc: "Waterproof.", rating: 3 },
+            { id: 37, name: "Classic Loafers", price: 4100, cat: "Footwear", img: "https://images.unsplash.com/photo-1614252235316-8c857d38b5f4?w=400", desc: "Suede.", rating: 4 },
+            { id: 38, name: "Platform Heels", price: 5500, cat: "Footwear", img: "https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=400", desc: "Formal.", rating: 5 },
+            { id: 39, name: "Snow Boots", price: 7200, cat: "Footwear", img: "https://images.unsplash.com/photo-1511556532299-8f662fc26c06?w=400", desc: "Winter.", rating: 4 },
+            { id: 40, name: "Canvas Slipon", price: 1800, cat: "Footwear", img: "https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?w=400", desc: "Casual.", rating: 4 },
+            // Accessories
+            { id: 41, name: "Smart Tag", price: 1500, cat: "Accessories", img: "https://images.unsplash.com/photo-1586767050293-c3430ad5793d?w=400", desc: "Tracker.", rating: 4 },
+            { id: 42, name: "Sports Bottle", price: 2200, cat: "Accessories", img: "https://images.unsplash.com/photo-1602143307185-84487493376e?w=400", desc: "Steel.", rating: 5 },
+            { id: 43, name: "Video Gimbal", price: 8900, cat: "Accessories", img: "https://images.unsplash.com/photo-1589131008106-7c0307a68546?w=400", desc: "Stable.", rating: 4 },
+            { id: 44, name: "Compact Power", price: 3500, cat: "Accessories", img: "https://images.unsplash.com/photo-1609091839311-d5368165ad4c?w=400", desc: "10k mAh.", rating: 4 },
+            { id: 45, name: "Study Lamp", price: 2100, cat: "Accessories", img: "https://images.unsplash.com/photo-1534073828943-f801091bb18c?w=400", desc: "Flexible.", rating: 4 },
+            { id: 46, name: "Oil Diffuser", price: 1800, cat: "Accessories", img: "https://images.unsplash.com/photo-1602928321679-560bb453f190?w=400", desc: "Relaxing.", rating: 5 },
+            { id: 47, name: "Tech Pouch", price: 1100, cat: "Accessories", img: "https://images.unsplash.com/photo-1585773153173-39985a158da2?w=400", desc: "Cables.", rating: 4 },
+            { id: 48, name: "Leather Diary", price: 1200, cat: "Accessories", img: "https://images.unsplash.com/photo-1531346878377-a5be20888e57?w=400", desc: "Hardcover.", rating: 4 },
+            { id: 49, name: "Black Umbrella", price: 1200, cat: "Accessories", img: "https://images.unsplash.com/photo-1511216335778-7cb8f49fa7a3?w=400", desc: "Foldable.", rating: 3 },
+            { id: 50, name: "Global Plug", price: 2400, cat: "Accessories", img: "https://images.unsplash.com/photo-1592434134753-a70baf7979d7?w=400", desc: "Universal.", rating: 5 }
+        ],
+
+        init() {
+            const savedData = localStorage.getItem('ekart_v6_data');
+            const savedOrders = localStorage.getItem('ekart_v6_orders');
+            // CLEANUP: If data exists, remove items with no image. Otherwise use initData.
+            let rawData = savedData ? JSON.parse(savedData) : this.initData;
+            this.data = rawData.filter(item => item.img && item.img.length > 5);
+            this.orders = savedOrders ? JSON.parse(savedOrders) : [];
+            this.save();
+            this.render();
+        },
+
+        save() {
+            localStorage.setItem('ekart_v6_data', JSON.stringify(this.data));
+            localStorage.setItem('ekart_v6_orders', JSON.stringify(this.orders));
+        },
+
+        setRole(r) {
+            this.role = r;
+            document.getElementById('tabCust').style.background = r === 'customer' ? 'var(--primary)' : 'transparent';
+            document.getElementById('tabVend').style.background = r === 'vendor' ? 'var(--primary)' : 'transparent';
+        },
+
+        login() {
+            const email = document.getElementById('userEmail').value;
+            const pass = document.getElementById('userPass').value;
+
+            if (this.role === 'vendor') {
+                if (email === this.vendorCreds.email && pass === this.vendorCreds.pass) {
+                    document.getElementById('vendorDashboard').style.display = 'block';
+                    document.getElementById('catBar').style.display = 'none';
+                    document.getElementById('floatBtns').style.display = 'none';
+                    this.renderVendorOrders();
+                } else {
+                    return alert("Incorrect Vendor Credentials!");
+                }
+            } else {
+                if(!email.includes('@')) return alert("Enter valid email");
+            }
+
+            document.getElementById('authOverlay').style.display = 'none';
+            document.getElementById('logoutBtn').style.display = 'block';
+            this.render();
+        },
+
+        logout() {
+            location.reload(); 
+        },
+
+        setCat(c, b) {
+            document.querySelectorAll('.cat-btn').forEach(btn => btn.classList.remove('active'));
+            b.classList.add('active');
+            this.cat = c;
+            this.render();
+        },
+
+        render() {
+            const grid = document.getElementById('productGrid');
+            const search = document.getElementById('search').value.toLowerCase();
+            const filtered = this.data.filter(p => (this.cat === 'All' || p.cat === this.cat) && p.name.toLowerCase().includes(search));
+
+            grid.innerHTML = filtered.map(p => {
+                const inCart = this.cart.find(i => i.id === p.id);
+                return `
+                <div class="product-card" onclick="app.openDetails(${p.id})">
+                    <div class="img-container"><img src="${p.img}" onerror="this.parentNode.parentNode.remove()"></div>
+                    <div style="font-weight:700; font-size:0.9rem">${p.name}</div>
+                    <div style="color:var(--primary); font-weight:800; margin:5px 0">₹${p.price.toLocaleString()}</div>
+                    <div class="star-rating">${'★'.repeat(p.rating)}${'☆'.repeat(5-p.rating)}</div>
+                    ${this.role === 'customer' ? 
+                    `<button class="add-main-btn" onclick="event.stopPropagation(); app.addToCart(${p.id})">${inCart ? 'IN BAG ('+inCart.qty+')' : 'ADD TO BAG'}</button>` : 
+                    `<button class="add-main-btn" style="background:var(--secondary)" onclick="event.stopPropagation(); app.vendorDelete(${p.id})">DELETE PRODUCT</button>`}
+                </div>`;
+            }).join('');
+        },
+
+        openDetails(id) {
+            const p = this.data.find(x => x.id === id);
+            document.getElementById('detailsBody').innerHTML = `
+                <img src="${p.img}" style="width:100%; border-radius:15px; margin-bottom:15px; max-height:250px; object-fit:cover">
+                <h2>${p.name}</h2>
+                <p style="color:var(--text-muted); margin:10px 0">${p.desc}</p>
+                <div style="font-size:1.5rem; font-weight:800; color:var(--primary)">₹${p.price.toLocaleString()}</div>
+                <div style="margin:20px 0; border-top:1px solid var(--border); padding-top:15px">
+                    <p>Give Rating:</p>
+                    <div class="star-rating">
+                        ${[1,2,3,4,5].map(s => `<span onclick="app.updateRating(${p.id}, ${s})">${s <= p.rating ? '★' : '☆'}</span>`).join('')}
+                    </div>
+                </div>
+            `;
+            document.getElementById('detailsModal').style.display = 'flex';
+        },
+
+        updateRating(id, rating) {
+            const p = this.data.find(x => x.id === id);
+            p.rating = rating;
+            this.save();
+            this.openDetails(id);
+            this.render();
+        },
+
+        addToCart(id) {
+            const item = this.cart.find(i => i.id === id);
+            if(item) item.qty++;
+            else this.cart.push({...this.data.find(x => x.id === id), qty: 1});
+            this.updateCartUI();
+            this.render();
+        },
+
+        updateCartUI() {
+            const count = this.cart.reduce((s, i) => s + i.qty, 0);
+            const total = this.cart.reduce((s, i) => s + (i.price * i.qty), 0);
+            document.getElementById('cCount').innerText = count;
+            document.getElementById('cartTotal').innerText = `₹${total.toLocaleString()}`;
+            document.getElementById('cartItems').innerHTML = this.cart.map(i => `
+                <div style="display:flex; justify-content:space-between; margin-bottom:10px; background:var(--surface); padding:10px; border-radius:10px">
+                    <span>${i.name} (x${i.qty})</span>
+                    <b>₹${(i.price*i.qty).toLocaleString()}</b>
+                </div>
+            `).join('');
+        },
+
+        openCheckout() {
+            if(this.cart.length === 0) return alert("Empty Cart");
+            document.getElementById('checkoutModal').style.display = 'flex';
+        },
+
+        placeOrder() {
+            const name = document.getElementById('custName').value;
+            const addr = document.getElementById('custAddr').value;
+            const pay = document.querySelector('input[name="pay"]:checked').value;
+            if(!name || !addr) return alert("Missing Info");
+
+            const order = {
+                id: Date.now(), customer: name, address: addr, payment: pay,
+                items: [...this.cart], total: this.cart.reduce((s, i) => s + (i.price * i.qty), 0),
+                status: 'Processing', date: new Date().toLocaleDateString()
+            };
+
+            this.orders.unshift(order);
+            this.save();
+            this.cart = [];
+            this.updateCartUI();
+            this.render();
+            this.closeModal('checkoutModal');
+            this.togglePanel('cartPanel');
+            alert(`Order Placed Successfully!`);
+        },
+
+        renderTracking() {
+            const list = document.getElementById('trackList');
+            if(this.orders.length === 0) return list.innerHTML = "<p>No orders.</p>";
+            list.innerHTML = this.orders.map(o => `
+                <div style="background:var(--surface); padding:15px; border-radius:15px; margin-bottom:10px">
+                    <div style="display:flex; justify-content:space-between">
+                        <b>Order #${o.id.toString().slice(-5)}</b>
+                        <span class="status-badge" style="background:${o.status === 'Shipped' ? '#22c55e' : '#6366f1'}">${o.status}</span>
+                    </div>
+                    <p style="font-size:0.8rem">${o.items.length} Items • ₹${o.total.toLocaleString()}</p>
+                </div>
+            `).join('');
+        },
+
+        renderVendorOrders() {
+            const list = document.getElementById('vendorOrders');
+            if(this.orders.length === 0) { list.innerHTML = "<p>No orders yet.</p>"; return; }
+            list.innerHTML = this.orders.map(o => `
+                <div style="background:var(--surface); padding:20px; border-radius:15px; margin-bottom:15px; border:1px solid var(--border)">
+                    <p><b>Customer:</b> ${o.customer}</p>
+                    <p><b>Address:</b> ${o.address}</p>
+                    <p><b>Payment:</b> ${o.payment}</p>
+                    <div style="margin-top:10px">
+                        ${o.status === 'Processing' ? 
+                        `<button class="add-main-btn" onclick="app.shipOrder(${o.id})">SHIP ORDER</button>` : 
+                        `<b style="color:#22c55e">SHIPPED</b>`}
+                    </div>
+                </div>
+            `).join('');
+        },
+
+        shipOrder(id) {
+            const o = this.orders.find(x => x.id === id);
+            o.status = 'Shipped';
+            this.save();
+            this.renderVendorOrders();
+        },
+
+        vendorAdd() {
+            const n = document.getElementById('vName').value;
+            const p = parseInt(document.getElementById('vPrice').value);
+            const c = document.getElementById('vCat').value;
+            const f = document.getElementById('vFile').files[0];
+            if(!n || !p || !f) return alert("Missing fields");
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                this.data.unshift({ id: Date.now(), name: n, price: p, cat: c, img: e.target.result, desc: "New Arrival.", rating: 5 });
+                this.save(); this.render();
+            };
+            reader.readAsDataURL(f);
+        },
+
+        vendorDelete(id) {
+            if(confirm("Confirm Permanent Deletion?")) {
+                this.data = this.data.filter(x => x.id !== id);
+                this.save(); this.render();
+            }
+        },
+
+        togglePanel(id) { 
+            document.getElementById(id).classList.toggle('open'); 
+            if(id === 'trackPanel') this.renderTracking();
+        },
+        closeModal(id) { document.getElementById(id).style.display = 'none'; },
+        toggleTheme() { document.body.setAttribute('data-theme', document.body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'); }
+    };
+
+    app.init();
+</script>
+</body>
+</html>
